@@ -168,7 +168,7 @@ impl Request for DefaultRequest {
         let (mut msg, mut n) = self.read(512);
         while n == 512 {
             let (new_msg, new_n) = self.read(512);
-            msg = msg + new_msg;
+            msg = msg + new_msg.as_slice();
             n = new_n;
         }
         return msg;
