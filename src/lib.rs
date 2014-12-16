@@ -134,7 +134,7 @@ impl Request for DefaultRequest {
 
     fn get_param(&self, name: &str) -> Option<String> {
         unsafe {
-            let param = ffi::FCGX_GetParam(name.to_c_str().into_inner(), self.raw_request.envp);
+            let param = ffi::FCGX_GetParam(name.to_c_str().as_ptr(), self.raw_request.envp);
             if param.is_null() {
                 return None;
             }
@@ -145,13 +145,13 @@ impl Request for DefaultRequest {
 
     fn write(&mut self, msg: &str) -> i32 {
         unsafe {
-            return ffi::FCGX_FPrintF(self.raw_request.out_stream, msg.to_c_str().into_inner());
+            return ffi::FCGX_FPrintF(self.raw_request.out_stream, msg.to_c_str().as_ptr());
         }
     }
 
     fn error(&mut self, msg: &str) -> i32 {
         unsafe {
-            return ffi::FCGX_FPrintF(self.raw_request.err_stream, msg.to_c_str().into_inner());
+            return ffi::FCGX_FPrintF(self.raw_request.err_stream, msg.to_c_str().as_ptr());
         }
     }
 
