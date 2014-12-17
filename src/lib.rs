@@ -157,9 +157,11 @@ impl Request for DefaultRequest {
 
     fn read(&mut self, n: i32) -> (String, i32) {
         unsafe {
-            let input = libc::malloc(n as libc::size_t) as *mut libc::c_char;
+            let size = (n + 1) as libc::size_t;
+            let input = libc::malloc(size) as *mut libc::c_char;
+            std::ptr::zero_memory(input, size as uint);
             let byte_count = ffi::FCGX_GetStr(input, n, self.raw_request.in_stream);
-            let output = std::c_str::CString::new(input as *const libc::c_char, false);
+            let output = std::c_str::CString::new(input as *const libc::c_char, true);
             return (String::from_str(output.as_str().unwrap_or("")), byte_count);
         }
     }
