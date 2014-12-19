@@ -16,3 +16,9 @@ path = "src/lib.rs"
 name = "fcgi-example"
 path = "examples/example.rs"
 doc = false
+
+[[bin]]
+name = "echo"
+path = "examples/echo.rs"
+doc = false
+

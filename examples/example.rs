@@ -4,7 +4,7 @@ extern crate libc;
 use fcgi::{Request, DefaultRequest};
 
 fn main() {
-    println!("isCgi: {}", fcgi::is_cgi())
+    println!("isCgi: {}", fcgi::is_cgi());
     fcgi::initialize_fcgi();
     let mut request: DefaultRequest = Request::new().unwrap();
     while request.accept() {
