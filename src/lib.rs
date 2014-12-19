@@ -79,13 +79,13 @@ pub trait Request {
     fn finish(&mut self);
 
     /// Get a value of a FCGI parameter from the environment.
-    fn get_param(&self, name: &str) -> Option<String>;
+    fn get_param<T:ToCStr>(&self, name: T) -> Option<String>;
 
     /// Writes the given String into the output stream.
-    fn write(&mut self, msg: &str) -> i32;
+    fn write<T:ToCStr>(&mut self, msg: T) -> i32;
 
     /// Writes the given String into the error stream.
-    fn error(&mut self, msg: &str) -> i32;
+    fn error<T:ToCStr>(&mut self, msg: T) -> i32;
 
     /// Reads the entire input into a String, returns the
     /// empty string of no input was read.
@@ -132,7 +132,7 @@ impl Request for DefaultRequest {
         }
     }
 
-    fn get_param(&self, name: &str) -> Option<String> {
+    fn get_param<T:ToCStr>(&self, name: T) -> Option<String> {
         unsafe {
             let param = ffi::FCGX_GetParam(name.to_c_str().as_ptr(), self.raw_request.envp);
             if param.is_null() {
@@ -143,13 +143,13 @@ impl Request for DefaultRequest {
         }
     }
 
-    fn write(&mut self, msg: &str) -> i32 {
+    fn write<T:ToCStr>(&mut self, msg: T) -> i32 {
         unsafe {
             return ffi::FCGX_FPrintF(self.raw_request.out_stream, msg.to_c_str().as_ptr());
         }
     }
 
-    fn error(&mut self, msg: &str) -> i32 {
+    fn error<T:ToCStr>(&mut self, msg: T) -> i32 {
         unsafe {
             return ffi::FCGX_FPrintF(self.raw_request.err_stream, msg.to_c_str().as_ptr());
         }

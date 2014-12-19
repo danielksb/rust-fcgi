@@ -19,7 +19,7 @@ fn handle_request(accept_lock: Arc<Mutex<int>> ) {
         let received = request.readall();
         request.write("Content-type: text/plain\r\n");
         request.write("\r\n");
-        request.write(received.as_slice());
+        request.write(received);
         request.flush(fcgi::StreamType::OutStream);
         request.finish();
     }
