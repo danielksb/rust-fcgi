@@ -15,10 +15,9 @@ or connect to it via tcp, here is an example configuration for lighttpd:
  
 ```
 fastcgi.server = (
-      "/cpp" => ((
+      "/rust" => ((
              "host" => "127.0.0.1",
              "port" => 8080,
-             "max-procs" => "1",
              "check-local" => "disable"
        ))
  )
@@ -33,5 +32,5 @@ Visit http://127.0.0.1/cpp/hello to receive a welcoming greeting. You can also
 try POSTing to the URL to test the `readall` method which should write the posted
 request body to stdout:
 ```
-     curl --request POST --data Test http://127.0.0.1/cpp/hello
+     curl --request POST --data Test http://127.0.0.1/rust
 ```
