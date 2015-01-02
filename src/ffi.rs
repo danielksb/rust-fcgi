@@ -55,6 +55,7 @@ extern {
     pub fn FCGX_Finish_r(request: *mut FCGX_Request) -> libc::c_int;
     pub fn FCGX_GetParam(name: *const libc::c_char, envp: *mut libc::c_void) -> *mut libc::c_char;
     pub fn FCGX_FPrintF(stream: *mut libc::c_void, format: *const libc::c_char) -> libc::c_int;
+    pub fn FCGX_PutS(format: *const libc::c_char, stream: *mut libc::c_void) -> libc::c_int;
     pub fn FCGX_GetStr(input: *mut libc::c_char, n: libc::c_int, stream: *mut libc::c_void) -> libc::c_int;
     pub fn FCGX_FFlush(stream: *mut libc::c_void);
 }

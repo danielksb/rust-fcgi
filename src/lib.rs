@@ -145,13 +145,13 @@ impl Request for DefaultRequest {
 
     fn write<T:ToCStr>(&mut self, msg: T) -> i32 {
         unsafe {
-            return ffi::FCGX_FPrintF(self.raw_request.out_stream, msg.to_c_str().as_ptr());
+            return ffi::FCGX_PutS(msg.to_c_str().as_ptr(), self.raw_request.out_stream);
         }
     }
 
     fn error<T:ToCStr>(&mut self, msg: T) -> i32 {
         unsafe {
-            return ffi::FCGX_FPrintF(self.raw_request.err_stream, msg.to_c_str().as_ptr());
+            return ffi::FCGX_PutS(msg.to_c_str().as_ptr(), self.raw_request.err_stream);
         }
     }
 
