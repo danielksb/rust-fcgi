@@ -163,11 +163,12 @@ impl Request for DefaultRequest {
 
     fn read(&mut self, n: i32) -> (String, i32) {
         unsafe {
-            let size = (n + 1) as libc::size_t;
-            let input = libc::malloc(size) as *mut libc::c_char;
-            std::ptr::zero_memory(input, size as usize);
-            let byte_count = capi::FCGX_GetStr(input, n, self.raw_request.in_stream);
-            let inputref = &(input as *const libc::c_char);
+            let size = (n + 1) as usize;
+            let mut input : Vec<libc::c_char>= Vec::with_capacity(size);
+            let pdst = input.as_mut_ptr();
+            let byte_count = capi::FCGX_GetStr(pdst, n, self.raw_request.in_stream);
+            input.set_len(byte_count as usize);
+            let inputref = &(pdst as *const libc::c_char);
             let slice = ffi::c_str_to_bytes(inputref);
             return (String::from_str(str::from_utf8(slice).unwrap_or("")), byte_count);
         }
