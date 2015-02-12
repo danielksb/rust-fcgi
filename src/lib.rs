@@ -6,7 +6,7 @@
 //!
 //! [fast-cgi library]: http://www.fastcgi.com/devkit/doc/overview.html
 //!
-//! The low level API is available via `mod ffi`. A safer rust interface is
+//! The low level API is available via `mod capi`. A safer rust interface is
 //! provided by `mod core`. More method bindings and higher level API functions
 //! will be added in the future.
 //!
@@ -44,14 +44,16 @@
 
 extern crate libc;
 use std::default::Default;
+use std::ffi;
+use std::str;
 
 
-pub mod ffi;
+pub mod capi;
 
 /// Initialize the FCGX library. Returns true upon success.
 pub fn initialize_fcgi() -> bool {
     unsafe {
-        return ffi::FCGX_Init() == 0;
+        return capi::FCGX_Init() == 0;
     }
 }
 
@@ -59,7 +61,7 @@ pub fn initialize_fcgi() -> bool {
 /// rather than a FastCGI process.
 pub fn is_cgi() -> bool {
     unsafe {
-        return ffi::FCGX_IsCGI() != 0;
+        return capi::FCGX_IsCGI() != 0;
     }
 }
 
@@ -79,13 +81,13 @@ pub trait Request {
     fn finish(&mut self);
 
     /// Get a value of a FCGI parameter from the environment.
-    fn get_param<T:ToCStr>(&self, name: T) -> Option<String>;
+    fn get_param(&self, name: &str) -> Option<String>;
 
     /// Writes the given String into the output stream.
-    fn write<T:ToCStr>(&mut self, msg: T) -> i32;
+    fn write(&mut self, msg: &str) -> i32;
 
     /// Writes the given String into the error stream.
-    fn error<T:ToCStr>(&mut self, msg: T) -> i32;
+    fn error(&mut self, msg: &str) -> i32;
 
     /// Reads the entire input into a String, returns the
     /// empty string of no input was read.
@@ -105,14 +107,14 @@ pub trait Request {
 /// Default implementation for FCGI request
 #[allow(missing_copy_implementations)]
 pub struct DefaultRequest {
-    raw_request: ffi::FCGX_Request
+    raw_request: capi::FCGX_Request
 }
 
 impl Request for DefaultRequest {
     fn new() -> Option<DefaultRequest> {
-        let mut request: ffi::FCGX_Request = Default::default();
+        let mut request: capi::FCGX_Request = Default::default();
         unsafe {
-            if ffi::FCGX_InitRequest(&mut request, 0, 0) == 0 {
+            if capi::FCGX_InitRequest(&mut request, 0, 0) == 0 {
                 return Some(DefaultRequest {raw_request: request });
             } else {
                 return None;
@@ -122,36 +124,40 @@ impl Request for DefaultRequest {
 
     fn accept(&mut self) -> bool {
         unsafe {
-            return ffi::FCGX_Accept_r(&mut self.raw_request) == 0;
+            return capi::FCGX_Accept_r(&mut self.raw_request) == 0;
         }
     }
 
     fn finish(&mut self) {
         unsafe {
-            ffi::FCGX_Finish_r(&mut self.raw_request);
+            capi::FCGX_Finish_r(&mut self.raw_request);
         }
     }
 
-    fn get_param<T:ToCStr>(&self, name: T) -> Option<String> {
+    fn get_param(&self, name: &str) -> Option<String> {
+        let cstr = ffi::CString::from_slice(name.as_bytes());
         unsafe {
-            let param = ffi::FCGX_GetParam(name.to_c_str().as_ptr(), self.raw_request.envp);
+            let param = capi::FCGX_GetParam(cstr.as_ptr(), self.raw_request.envp);
             if param.is_null() {
                 return None;
             }
-            let paramstr = std::c_str::CString::new(param as *const libc::c_char, false);
-            return Some(String::from_str(paramstr.as_str().unwrap_or("")));
+            let paramref = &(param as *const libc::c_char);
+            let slice = ffi::c_str_to_bytes(paramref);
+            return Some(String::from_str(str::from_utf8(slice).unwrap_or("")));
         }
     }
 
-    fn write<T:ToCStr>(&mut self, msg: T) -> i32 {
+    fn write(&mut self, msg: &str) -> i32 {
+        let cstr = ffi::CString::from_slice(msg.as_bytes());
         unsafe {
-            return ffi::FCGX_PutS(msg.to_c_str().as_ptr(), self.raw_request.out_stream);
+            return capi::FCGX_PutS(cstr.as_ptr(), self.raw_request.out_stream);
         }
     }
 
-    fn error<T:ToCStr>(&mut self, msg: T) -> i32 {
+    fn error(&mut self, msg: &str) -> i32 {
+        let cstr = ffi::CString::from_slice(msg.as_bytes());
         unsafe {
-            return ffi::FCGX_PutS(msg.to_c_str().as_ptr(), self.raw_request.err_stream);
+            return capi::FCGX_PutS(cstr.as_ptr(), self.raw_request.err_stream);
         }
     }
 
@@ -159,10 +165,11 @@ impl Request for DefaultRequest {
         unsafe {
             let size = (n + 1) as libc::size_t;
             let input = libc::malloc(size) as *mut libc::c_char;
-            std::ptr::zero_memory(input, size as uint);
-            let byte_count = ffi::FCGX_GetStr(input, n, self.raw_request.in_stream);
-            let output = std::c_str::CString::new(input as *const libc::c_char, true);
-            return (String::from_str(output.as_str().unwrap_or("")), byte_count);
+            std::ptr::zero_memory(input, size as usize);
+            let byte_count = capi::FCGX_GetStr(input, n, self.raw_request.in_stream);
+            let inputref = &(input as *const libc::c_char);
+            let slice = ffi::c_str_to_bytes(inputref);
+            return (String::from_str(str::from_utf8(slice).unwrap_or("")), byte_count);
         }
     }
     
@@ -183,7 +190,7 @@ impl Request for DefaultRequest {
             StreamType::ErrStream => self.raw_request.err_stream,
         };
         unsafe {
-            ffi::FCGX_FFlush(stream);
+            capi::FCGX_FFlush(stream);
         }
     }
 }

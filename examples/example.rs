@@ -8,11 +8,11 @@ fn main() {
     fcgi::initialize_fcgi();
     let mut request: DefaultRequest = Request::new().unwrap();
     while request.accept() {
-        println!("request uri    {}", request.get_param("REQUEST_URI"));
-        println!("document root  {}", request.get_param("DOCUMENT_ROOT"));
-        println!("script name    {}", request.get_param("SCRIPT_NAME"));
-        println!("request method {}", request.get_param("REQUEST_METHOD"));
-        println!("remote user    {}", request.get_param("REMOTE_USER"));
+        println!("request uri    {:?}", request.get_param("REQUEST_URI"));
+        println!("document root  {:?}", request.get_param("DOCUMENT_ROOT"));
+        println!("script name    {:?}", request.get_param("SCRIPT_NAME"));
+        println!("request method {:?}", request.get_param("REQUEST_METHOD"));
+        println!("remote user    {:?}", request.get_param("REMOTE_USER"));
         let received = request.readall();
         println!("Received (size={})", received.len());
         if received.len() > 0 {

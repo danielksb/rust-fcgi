@@ -4,10 +4,11 @@ extern crate libc;
 
 use fcgi::{Request, DefaultRequest};
 use std::sync::{Arc, Mutex};
+use std::thread::Thread;
 
-static NTASKS: int = 8;
+static NTASKS: i32 = 8;
 
-fn handle_request(accept_lock: Arc<Mutex<int>> ) {
+fn handle_request(accept_lock: Arc<Mutex<i32>> ) {
     let mut request: DefaultRequest = Request::new().unwrap();
     loop {
         {
@@ -19,7 +20,7 @@ fn handle_request(accept_lock: Arc<Mutex<int>> ) {
         let received = request.readall();
         request.write("Content-type: text/plain\r\n");
         request.write("\r\n");
-        request.write(received);
+        request.write(received.as_slice());
         request.flush(fcgi::StreamType::OutStream);
         request.finish();
     }
@@ -32,8 +33,7 @@ fn main() {
 
     for _ in range(0, NTASKS) {
         let child_accept_lock = accept_lock.clone();
-        spawn(move || handle_request(child_accept_lock));
+        let _ = Thread::scoped(move || handle_request(child_accept_lock));
     }
-
 }
 
