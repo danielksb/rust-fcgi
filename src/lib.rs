@@ -141,9 +141,8 @@ impl Request for DefaultRequest {
             if param.is_null() {
                 return None;
             }
-            let paramref = &(param as *const libc::c_char);
-            let slice = ffi::c_str_to_bytes(paramref);
-            return Some(String::from_str(str::from_utf8(slice).unwrap_or("")));
+            let resultStr = str::from_c_str(param);
+            return Some(String::from_str(resultStr));
         }
     }
 
@@ -164,13 +163,12 @@ impl Request for DefaultRequest {
     fn read(&mut self, n: i32) -> (String, i32) {
         unsafe {
             let size = (n + 1) as usize;
-            let mut input : Vec<libc::c_char>= Vec::with_capacity(size);
-            let pdst = input.as_mut_ptr();
+            let mut buffer = Vec::with_capacity(size);
+            let pdst = buffer.as_mut_ptr();
             let byte_count = capi::FCGX_GetStr(pdst, n, self.raw_request.in_stream);
-            input.set_len(byte_count as usize);
-            let inputref = &(pdst as *const libc::c_char);
-            let slice = ffi::c_str_to_bytes(inputref);
-            return (String::from_str(str::from_utf8(slice).unwrap_or("")), byte_count);
+            buffer.set_len(byte_count as usize);
+            let resultStr = str::from_c_str(pdst);
+            return (String::from_str(resultStr), byte_count);
         }
     }
     
