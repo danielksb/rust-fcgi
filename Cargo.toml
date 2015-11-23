@@ -22,3 +22,6 @@ name = "echo"
 path = "examples/echo.rs"
 doc = false
 
+[dependencies]
+libc = "0.2"
+

@@ -11,14 +11,14 @@
 //! will be added in the future.
 //!
 //! # Basic Usage
-//! 
+//!
 //! Run `cargo build` to compile the example code under `examples/example.rs`.
 //! This will provide you with a simple "Hello World" web service which is writing
 //! some status information to stdout and an error message to the FCGI error stream.
 //!
 //! To use the example programme simply configure your web server to run the binary
 //! or connect to it via tcp, here is an example configuration for lighttpd:
-//! 
+//!
 //! ```
 //! fastcgi.server = (
 //!        "/cpp" => ((
@@ -45,7 +45,6 @@
 extern crate libc;
 use std::default::Default;
 use std::ffi;
-use std::str;
 
 
 pub mod capi;
@@ -57,7 +56,7 @@ pub fn initialize_fcgi() -> bool {
     }
 }
 
-/// Returns true if this process appears to be a CGI process 
+/// Returns true if this process appears to be a CGI process
 /// rather than a FastCGI process.
 pub fn is_cgi() -> bool {
     unsafe {
@@ -65,18 +64,17 @@ pub fn is_cgi() -> bool {
     }
 }
 
-#[deriving(Copy)]
 pub enum StreamType { OutStream, InStream, ErrStream }
 
 /// Methods for working with an FCGI request object. A default implementation is provided within this package.
 pub trait Request {
 
     /// Creates a new already initialized instance of an FCGI request.
-    fn new() -> Option<Self>;
+    fn new() -> Option<Self> where Self: Sized;
 
     /// Accept a new request (multi-thread safe).  Be sure to call initialize_fcgi() first.
     fn accept(&mut self) -> bool;
-    
+
     /// Finish the request (multi-thread safe).
     fn finish(&mut self);
 
@@ -95,7 +93,7 @@ pub trait Request {
 
     /// Reads up to n consecutive bytes from the input stream
     /// and returns them as String.  Performs no interpretation
-    /// of the input bytes. The second value of the returned 
+    /// of the input bytes. The second value of the returned
     /// tuple is the number of bytes read from the stream. If the
     /// result is smaller than n, the end of input has been reached.
     fn read(&mut self, n: i32) -> (String, i32);
@@ -135,26 +133,26 @@ impl Request for DefaultRequest {
     }
 
     fn get_param(&self, name: &str) -> Option<String> {
-        let cstr = ffi::CString::from_slice(name.as_bytes());
+        let cstr = ffi::CString::new(name).unwrap();
         unsafe {
             let param = capi::FCGX_GetParam(cstr.as_ptr(), self.raw_request.envp);
             if param.is_null() {
                 return None;
             }
-            let resultStr = str::from_c_str(param);
-            return Some(String::from_str(resultStr));
+            let result_str = ffi::CString::from_raw(param);
+            return Some(result_str.to_str().unwrap().to_string());
         }
     }
 
     fn write(&mut self, msg: &str) -> i32 {
-        let cstr = ffi::CString::from_slice(msg.as_bytes());
+        let cstr = ffi::CString::new(msg).unwrap();
         unsafe {
             return capi::FCGX_PutS(cstr.as_ptr(), self.raw_request.out_stream);
         }
     }
 
     fn error(&mut self, msg: &str) -> i32 {
-        let cstr = ffi::CString::from_slice(msg.as_bytes());
+        let cstr = ffi::CString::new(msg).unwrap();
         unsafe {
             return capi::FCGX_PutS(cstr.as_ptr(), self.raw_request.err_stream);
         }
@@ -167,16 +165,16 @@ impl Request for DefaultRequest {
             let pdst = buffer.as_mut_ptr();
             let byte_count = capi::FCGX_GetStr(pdst, n, self.raw_request.in_stream);
             buffer.set_len(byte_count as usize);
-            let resultStr = str::from_c_str(pdst);
-            return (String::from_str(resultStr), byte_count);
+            let result_str = ffi::CString::from_raw(pdst);
+            return (result_str.to_str().unwrap().to_string(), byte_count)
         }
     }
-    
+
     fn readall(&mut self) -> String {
         let (mut msg, mut n) = self.read(512);
         while n == 512 {
             let (new_msg, new_n) = self.read(512);
-            msg = msg + new_msg.as_slice();
+            msg = msg + &new_msg[..];
             n = new_n;
         }
         return msg;
@@ -193,4 +191,3 @@ impl Request for DefaultRequest {
         }
     }
 }
-

@@ -28,7 +28,7 @@ Now you can start the FCGI process with
    spawn-fcgi target/fcgi-example -n -p 8080
 ```
 
-Visit http://127.0.0.1/cpp/hello to receive a welcoming greeting. You can also
+Visit http://127.0.0.1/rust/hello to receive a welcoming greeting. You can also
 try POSTing to the URL to test the `readall` method which should write the posted
 request body to stdout:
 ```
