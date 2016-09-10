@@ -45,8 +45,8 @@
 extern crate libc;
 use std::default::Default;
 use std::ffi;
-
-
+use std::ffi::{CString};
+use std::os::unix::io::{RawFd};
 pub mod capi;
 
 /// Initialize the FCGX library. Returns true upon success.
@@ -64,6 +64,7 @@ pub fn is_cgi() -> bool {
     }
 }
 
+#[derive(Clone,Copy)]
 pub enum StreamType { OutStream, InStream, ErrStream }
 
 /// Methods for working with an FCGI request object. A default implementation is provided within this package.
@@ -71,6 +72,9 @@ pub trait Request {
 
     /// Creates a new already initialized instance of an FCGI request.
     fn new() -> Option<Self> where Self: Sized;
+    
+    /// Creates a new already initialized instance of an FCGI request.
+    fn new_with_fd(fd: RawFd) -> Option<Self> where Self: Sized;
 
     /// Accept a new request (multi-thread safe).  Be sure to call initialize_fcgi() first.
     fn accept(&mut self) -> bool;
@@ -119,6 +123,17 @@ impl Request for DefaultRequest {
             }
         }
     }
+    
+    fn new_with_fd(fd: RawFd) -> Option<DefaultRequest> {
+        let mut request: capi::FCGX_Request = Default::default();
+        unsafe {
+            if capi::FCGX_InitRequest(&mut request, fd, 0) == 0 {
+                return Some(DefaultRequest {raw_request: request });
+            } else {
+                return None;
+            }
+        }
+    }
 
     fn accept(&mut self) -> bool {
         unsafe {
@@ -133,14 +148,15 @@ impl Request for DefaultRequest {
     }
 
     fn get_param(&self, name: &str) -> Option<String> {
-        let cstr = ffi::CString::new(name).unwrap();
+    	let cstr = CString::new(name).unwrap();
         unsafe {
             let param = capi::FCGX_GetParam(cstr.as_ptr(), self.raw_request.envp);
             if param.is_null() {
                 return None;
             }
-            let result_str = ffi::CString::from_raw(param);
-            return Some(result_str.to_str().unwrap().to_string());
+            let result_cstr = ffi::CStr::from_ptr(param);
+            let result_str = result_cstr.to_str().unwrap();
+            return Some(String::from(result_str));
         }
     }
 
@@ -152,7 +168,7 @@ impl Request for DefaultRequest {
     }
 
     fn error(&mut self, msg: &str) -> i32 {
-        let cstr = ffi::CString::new(msg).unwrap();
+        let cstr = ffi::CString::new(msg.as_bytes()).unwrap();
         unsafe {
             return capi::FCGX_PutS(cstr.as_ptr(), self.raw_request.err_stream);
         }
@@ -165,8 +181,9 @@ impl Request for DefaultRequest {
             let pdst = buffer.as_mut_ptr();
             let byte_count = capi::FCGX_GetStr(pdst, n, self.raw_request.in_stream);
             buffer.set_len(byte_count as usize);
-            let result_str = ffi::CString::from_raw(pdst);
-            return (result_str.to_str().unwrap().to_string(), byte_count)
+            let result_cstr = ffi::CStr::from_ptr(pdst);
+            let result_str = result_cstr.to_str().unwrap();
+            return (String::from(result_str), byte_count);
         }
     }
 
@@ -174,7 +191,7 @@ impl Request for DefaultRequest {
         let (mut msg, mut n) = self.read(512);
         while n == 512 {
             let (new_msg, new_n) = self.read(512);
-            msg = msg + &new_msg[..];
+            msg = msg + new_msg.as_ref();
             n = new_n;
         }
         return msg;
